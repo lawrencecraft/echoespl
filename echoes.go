@@ -80,7 +80,8 @@ func translateRow(row *html.Node) (EchoesSong, bool) {
 }
 
 func cleanTitle(title string) string {
-	cleanedString := strings.Replace(title, "(live)", "", -1)
+	lowercasedCleanedString := strings.Replace(title, "(live)", "", -1)
+	cleanedString := strings.Replace(lowercasedCleanedString, "(Live)", "", -1)
 	return strings.TrimSpace(cleanedString)
 }
 
