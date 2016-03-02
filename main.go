@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	log "github.com/Sirupsen/logrus"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/zmb3/spotify"
+	"golang.org/x/oauth2"
 	"io/ioutil"
 	"os"
 	"os/user"
@@ -14,37 +16,46 @@ import (
 var configDir = ".echoespl"
 
 type EchoesConfig struct {
-	ClientId     string `json:"client_id"`
-	ClientSecret string `json:"client_secret"`
-	AuthToken    string `json:"current_token"`
+	ClientId     string        `json:"client_id"`
+	ClientSecret string        `json:"client_secret"`
+	AuthToken    *oauth2.Token `json:"current_token"`
 }
 
-func getAuthenticatedClient(config EchoesConfig, forceRefresh bool) (string, spotify.Client) {
-	var token string
-	var auth spotify.Authenticator
+func getAuthenticatedClient(config EchoesConfig, forceRefresh bool) (*spotify.Client, error) {
+	auth := GetDefaultAuthenticator(config.ClientId, config.ClientSecret)
+	if config.AuthToken == nil || forceRefresh {
+		log.Infoln("Entering authentication flow refresh")
+		authenticationResponse, err := StartAuthenticationFlow(config.ClientId, config.ClientSecret)
+		if err != nil {
+			log.Errorln("Got an error setting up auth flow:", err)
+			return nil, err
+		}
 
-	if config.AuthToken == "" || forceRefresh {
-		url, channel, newAuth := StartAuthenticationFlow(config.ClientId, config.ClientSecret)
-		auth = newAuth
-		fmt.Println("Opening", url)
-
+		// Redirect user to the authentication URL
+		url := authenticationResponse.ClientRedirectUri
+		fmt.Println("Please visit", url, "if your browser does not automatically start")
 		open.Start(url)
 
-		token = <-channel
+		select {
+		case tokenError := <-authenticationResponse.TokenResponseError:
+			return nil, tokenError
+		case token := <-authenticationResponse.TokenResponseChannel:
+			client := auth.NewClient(&token)
+			config.AuthToken = &token
+
+			err = saveConfig(config)
+			if err != nil {
+				// Don't end, just write the error
+				fmt.Println("There's a problem saving the configuration file")
+			}
+
+			return &client, nil
+		}
 	} else {
-		auth = GetDefaultAuthenticator(config.ClientId, config.ClientSecret)
-		token = config.AuthToken
+		log.Infoln("Pulled from config file")
+		client := auth.NewClient(config.AuthToken)
+		return &client, nil
 	}
-	oauthToken, err := auth.Exchange(token)
-	if err != nil && forceRefresh == false {
-		return getAuthenticatedClient(config, true)
-	} else if err != nil {
-		panic(err)
-	}
-
-	client := auth.NewClient(oauthToken)
-
-	return oauthToken.RefreshToken, client
 }
 
 // accessible returns whether the given file or directory is accessible or not
@@ -56,7 +67,43 @@ func accessible(path string) bool {
 	return false
 }
 
-func getConfig() EchoesConfig {
+func getConfig() (EchoesConfig, error) {
+	filePath := getConfigPath()
+	file, err := os.Open(filePath)
+	defer file.Close()
+	if err != nil {
+		return EchoesConfig{}, err
+	}
+
+	data, err := ioutil.ReadAll(file)
+	if err != nil {
+		return EchoesConfig{}, err
+	}
+
+	var cfg EchoesConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return EchoesConfig{}, err
+	}
+
+	return cfg, nil
+}
+
+func saveConfig(config EchoesConfig) error {
+	configPath := getConfigPath()
+
+	bytes, err := json.Marshal(config)
+	if err != nil {
+		return err
+	}
+	err = ioutil.WriteFile(configPath, bytes, 0600)
+	if err != nil {
+		return err
+	}
+	log.Infoln("Saving configuration file")
+	return nil
+}
+
+func getConfigPath() string {
 	user, err := user.Current()
 	if err != nil {
 		panic(err)
@@ -68,24 +115,7 @@ func getConfig() EchoesConfig {
 	}
 
 	filePath := path.Join(configPath, "config")
-
-	file, err := os.Open(filePath)
-	defer file.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		panic(err)
-	}
-
-	var cfg EchoesConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		panic(err)
-	}
-
-	return cfg
+	return filePath
 }
 
 func main() {
@@ -97,7 +127,12 @@ func main() {
 	url := os.Args[len(os.Args)-1]
 	shows, err := GetShows(url)
 
-	config := getConfig()
+	if err != nil {
+		fmt.Println("There was a problem retrieving shows:", err)
+		os.Exit(1)
+	}
+
+	config, err := getConfig()
 
 	if err != nil {
 		fmt.Println("There's been a problem: %v", err)
@@ -108,7 +143,17 @@ func main() {
 		fmt.Println(show.Title, "|", show.Album, "|", show.Artist)
 	}
 
-	token, _ := getAuthenticatedClient(config, false)
+	client, err := getAuthenticatedClient(config, false)
+	if err != nil {
+		fmt.Println("Problem authenticating:", err)
+		os.Exit(1)
+	}
 
-	fmt.Println("Got", token)
+	fmt.Println("Got a client. Getting user info...")
+	user, err := client.CurrentUser()
+	if err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+	fmt.Println("Hello,", user.DisplayName)
 }

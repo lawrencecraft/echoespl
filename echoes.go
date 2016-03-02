@@ -31,11 +31,11 @@ func GetShows(uri string) ([]EchoesSong, error) {
 		return nil, errors.New(fmt.Sprint("Error from remote: ", err))
 	}
 
+	defer response.Body.Close()
 	return getShowsFromStream(response.Body)
 }
 
 func getShowsFromStream(stream io.ReadCloser) ([]EchoesSong, error) {
-	defer stream.Close()
 	root, err := html.Parse(stream)
 
 	if err != nil {
