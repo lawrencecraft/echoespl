@@ -142,6 +142,7 @@ func main() {
 	for _, song := range songs {
 		fmt.Println(song.Title, "|", song.Album, "|", song.Artist)
 	}
+	fmt.Println("That's", len(songs), "songs")
 
 	client, err := getAuthenticatedClient(config, false)
 	if err != nil {

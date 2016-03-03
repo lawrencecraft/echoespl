@@ -80,8 +80,9 @@ func generateState() string {
 // an authenticated Spotify client, and songs is a list of songs scraped from the Echoes website
 func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong) (string, error) {
 	terms := echoesSongsToSearchStrings(songs)
-	results := make([]chan *spotify.SearchResult, len(songs))
-	errors := make([]chan error, len(songs))
+	fmt.Println("Buildling playlist of", len(terms), "terms")
+	results := make([]chan *spotify.SearchResult, 0, len(songs))
+	errors := make([]chan error, 0, len(songs))
 
 	// Dispatch each request in parallel
 	for _, term := range terms {
@@ -106,7 +107,7 @@ func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong) (string, er
 	for i := range results {
 		replyChannel := results[i]
 		errorChannel := errors[i]
-
+		fmt.Println("Looking for index", i)
 		select {
 		case result := <-replyChannel:
 			tracks := result.Tracks.Total
@@ -122,7 +123,7 @@ func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong) (string, er
 }
 
 func echoesSongsToSearchStrings(songs []EchoesSong) []string {
-	terms := make([]string, len(songs))
+	terms := make([]string, 0, len(songs))
 	for _, v := range songs {
 		terms = append(terms, echoesSongToSearchString(v))
 	}
