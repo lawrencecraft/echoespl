@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -69,11 +70,26 @@ func StartAuthenticationFlow(clientID string, secretKey string) (AuthenticationR
 }
 
 func generateState() string {
+	// This is not secure and should not be relied upon for more than basic validation
 	now := time.Now().UTC().UnixNano()
-	rand.Seed(now + int64(os.Getpid()))
-	compiledString := []byte(fmt.Sprintf(string(now), os.Getpid(), rand.Int()))
-	hash := md5.New().Sum(compiledString)
-	return base64.StdEncoding.EncodeToString(hash)
+
+	rand.Seed(now)
+	nowString := strconv.Itoa(rand.Int())
+	nextFromNow := md5.New().Sum([]byte(nowString))
+
+	rand.Seed(int64(os.Getpid()))
+	pidString := strconv.Itoa(rand.Int())
+	nextFromPid := md5.New().Sum([]byte(pidString))
+
+	finalArray := make([]byte, len(nextFromNow), len(nextFromNow))
+
+	for i := range finalArray {
+
+		finalArray[i] = nextFromNow[i] ^ nextFromPid[i]
+		fmt.Printf("%v ^ %v is %v\n", nextFromNow[i], nextFromPid[i], finalArray[i])
+	}
+
+	return base64.StdEncoding.EncodeToString(finalArray)
 }
 
 // BuildPlaylist creates a Spotify playlist and returns a playlist identifier. authedClient is
@@ -131,20 +147,21 @@ func echoesSongsToSearchStrings(songs []EchoesSong) []string {
 }
 
 func echoesSongToSearchString(song EchoesSong) string {
-	searchStrings := prependSearchType("title", song.Title)
-	searchStrings = append(searchStrings, prependSearchType("album", song.Album)...)
-	searchStrings = append(searchStrings, prependSearchType("artist", song.Artist)...)
+	// Ignores album for the moment
+	searchStrings := prependSearchType("track", song.Title)
+	searchStrings = append(searchStrings, fmt.Sprintf("\"%v\"", song.Artist))
 
 	return strings.Join(searchStrings, " ")
 }
 
 func prependSearchType(searchType, title string) []string {
-	terms := make([]string, 0)
-	for _, s := range strings.Split(title, " ") {
-		if strings.TrimSpace(s) != "" {
-			term := fmt.Sprintf("%v:%v", searchType, s)
-			terms = append(terms, term)
-		}
-	}
-	return terms
+	// terms := make([]string, 0)
+	// for _, s := range strings.Split(title, " ") {
+	// 	if strings.TrimSpace(s) != "" {
+	// 		term := fmt.Sprintf("%v:%v", searchType, s)
+	// 		terms = append(terms, term)
+	// 	}
+	// }
+	// return terms
+	return []string{fmt.Sprintf("%v:\"%v\"", searchType, title)}
 }
