@@ -200,20 +200,13 @@ func echoesSongsToSearchStrings(songs []EchoesSong) []string {
 
 func echoesSongToSearchString(song EchoesSong) string {
 	// Ignores album for the moment
-	searchStrings := prependSearchType("track", song.Title)
-	searchStrings = append(searchStrings, fmt.Sprintf("\"%v\"", song.Artist))
+	searchStrings := []string{
+		prependSearchType("track", song.Title),
+		prependSearchType("artist", song.Artist)}
 
 	return strings.Join(searchStrings, " ")
 }
 
-func prependSearchType(searchType, title string) []string {
-	// terms := make([]string, 0)
-	// for _, s := range strings.Split(title, " ") {
-	// 	if strings.TrimSpace(s) != "" {
-	// 		term := fmt.Sprintf("%v:%v", searchType, s)
-	// 		terms = append(terms, term)
-	// 	}
-	// }
-	// return terms
-	return []string{fmt.Sprintf("%v:\"%v\"", searchType, title)}
+func prependSearchType(searchType, title string) string {
+	return fmt.Sprintf("%v:\"%v\"", searchType, title)
 }
