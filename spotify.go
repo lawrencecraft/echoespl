@@ -85,9 +85,7 @@ func generateState() string {
 	finalArray := make([]byte, len(nextFromNow), len(nextFromNow))
 
 	for i := range finalArray {
-
 		finalArray[i] = nextFromNow[i] ^ nextFromPid[i]
-		fmt.Printf("%v ^ %v is %v\n", nextFromNow[i], nextFromPid[i], finalArray[i])
 	}
 
 	return base64.StdEncoding.EncodeToString(finalArray)
