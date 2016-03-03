@@ -125,7 +125,7 @@ func main() {
 	}
 
 	url := os.Args[len(os.Args)-1]
-	shows, err := GetShows(url)
+	songs, err := GetShows(url)
 
 	if err != nil {
 		fmt.Println("There was a problem retrieving shows:", err)
@@ -139,8 +139,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	for _, show := range shows {
-		fmt.Println(show.Title, "|", show.Album, "|", show.Artist)
+	for _, song := range songs {
+		fmt.Println(song.Title, "|", song.Album, "|", song.Artist)
 	}
 
 	client, err := getAuthenticatedClient(config, false)
@@ -149,11 +149,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println("Got a client. Getting user info...")
-	user, err := client.CurrentUser()
+	playlist, err := BuildPlaylist(client, songs)
+
 	if err != nil {
-		fmt.Println("Error:", err)
+		fmt.Println("Error building playlist:", err)
 		os.Exit(1)
 	}
-	fmt.Println("Hello,", user.DisplayName)
+
+	fmt.Println("Playlist with ID", playlist, "successfully created. Happy listening!")
 }

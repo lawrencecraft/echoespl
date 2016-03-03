@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -73,4 +74,76 @@ func generateState() string {
 	compiledString := []byte(fmt.Sprintf(string(now), os.Getpid(), rand.Int()))
 	hash := md5.New().Sum(compiledString)
 	return base64.StdEncoding.EncodeToString(hash)
+}
+
+// BuildPlaylist creates a Spotify playlist and returns a playlist identifier. authedClient is
+// an authenticated Spotify client, and songs is a list of songs scraped from the Echoes website
+func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong) (string, error) {
+	terms := echoesSongsToSearchStrings(songs)
+	results := make([]chan *spotify.SearchResult, len(songs))
+	errors := make([]chan error, len(songs))
+
+	// Dispatch each request in parallel
+	for _, term := range terms {
+		term := term
+		replyChannel := make(chan *spotify.SearchResult)
+		errorChannel := make(chan error)
+
+		results = append(results, replyChannel)
+		errors = append(errors, errorChannel)
+
+		go func(t string, reply chan *spotify.SearchResult, errorReply chan error) {
+			result, err := authedClient.Search(t, spotify.SearchTypeTrack)
+			if err != nil {
+				errorReply <- err
+			} else {
+				reply <- result
+			}
+		}(term, replyChannel, errorChannel)
+	}
+
+	// Collate the responses
+	for i := range results {
+		replyChannel := results[i]
+		errorChannel := errors[i]
+
+		select {
+		case result := <-replyChannel:
+			tracks := result.Tracks.Total
+
+			fmt.Println("Got a result with", tracks, "tracks")
+		case err := <-errorChannel:
+			fmt.Println("Got an error:", err)
+		}
+	}
+
+	fmt.Println(len(terms), len(results), len(errors))
+	return "", nil
+}
+
+func echoesSongsToSearchStrings(songs []EchoesSong) []string {
+	terms := make([]string, len(songs))
+	for _, v := range songs {
+		terms = append(terms, echoesSongToSearchString(v))
+	}
+	return terms
+}
+
+func echoesSongToSearchString(song EchoesSong) string {
+	searchStrings := prependSearchType("title", song.Title)
+	searchStrings = append(searchStrings, prependSearchType("album", song.Album)...)
+	searchStrings = append(searchStrings, prependSearchType("artist", song.Artist)...)
+
+	return strings.Join(searchStrings, " ")
+}
+
+func prependSearchType(searchType, title string) []string {
+	terms := make([]string, 0)
+	for _, s := range strings.Split(title, " ") {
+		if strings.TrimSpace(s) != "" {
+			term := fmt.Sprintf("%v:%v", searchType, s)
+			terms = append(terms, term)
+		}
+	}
+	return terms
 }
