@@ -2,6 +2,7 @@ package main
 
 import (
 	"testing"
+	"time"
 )
 
 //func TestPrependSearchTypeSplitsASingleString(t *testing.T) {
@@ -66,6 +67,15 @@ func TestEchoesSongsToSearchStringsCreatesAProperLengthArray(t *testing.T) {
 	terms := echoesSongsToSearchStrings(songs)
 
 	assert_length(t, terms, 3)
+}
+
+func TestGeneratePlaylistNamePreservesUnixTime(t *testing.T) {
+	unixTime := time.Unix(1457039693, 0)
+	playlistName := generatePlaylistName(unixTime)
+
+	if playlistName != "Echoespl Playlist 1457039693" {
+		t.Error("Expected Echoespl Playlist 1457039693 but got", playlistName)
+	}
 }
 
 func assert_length(t *testing.T, array []string, expected_length int) {

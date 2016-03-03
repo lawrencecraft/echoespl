@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/md5"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/zmb3/spotify"
 	"golang.org/x/oauth2"
@@ -94,11 +95,13 @@ func generateState() string {
 
 // BuildPlaylist creates a Spotify playlist and returns a playlist identifier. authedClient is
 // an authenticated Spotify client, and songs is a list of songs scraped from the Echoes website
-func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong) (string, error) {
+func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong, market string) (string, error) {
 	terms := echoesSongsToSearchStrings(songs)
 	fmt.Println("Buildling playlist of", len(terms), "terms")
 	results := make([]chan *spotify.SearchResult, 0, len(songs))
-	errors := make([]chan error, 0, len(songs))
+	errorResult := make([]chan error, 0, len(songs))
+
+	tracks := make([]spotify.FullTrack, 0)
 
 	// Dispatch each request in parallel
 	for _, term := range terms {
@@ -107,7 +110,7 @@ func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong) (string, er
 		errorChannel := make(chan error)
 
 		results = append(results, replyChannel)
-		errors = append(errors, errorChannel)
+		errorResult = append(errorResult, errorChannel)
 
 		go func(t string, reply chan *spotify.SearchResult, errorReply chan error) {
 			result, err := authedClient.Search(t, spotify.SearchTypeTrack)
@@ -122,20 +125,69 @@ func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong) (string, er
 	// Collate the responses
 	for i := range results {
 		replyChannel := results[i]
-		errorChannel := errors[i]
-		fmt.Println("Looking for index", i)
+		errorChannel := errorResult[i]
+		song := songs[i]
+
 		select {
 		case result := <-replyChannel:
-			tracks := result.Tracks.Total
-
-			fmt.Println("Got a result with", tracks, "tracks")
+			if result.Tracks == nil {
+				fmt.Println("Possible problem with track", song.Title,
+					"by", song.Artist, "or the Spotify API. Please contact lawrencecraft on github")
+			} else {
+				for _, track := range result.Tracks.Tracks {
+					if isValidForMarket(track, market) {
+						tracks = append(tracks, track)
+						break
+					}
+				}
+			}
 		case err := <-errorChannel:
 			fmt.Println("Got an error:", err)
 		}
 	}
 
-	fmt.Println(len(terms), len(results), len(errors))
-	return "", nil
+	if len(tracks) > 0 {
+		return CreatePlaylist(authedClient, tracks)
+	}
+	return "", errors.New("No tracks found")
+}
+
+// CreatePlaylist creates a new playlist given a set of tracks with a default name
+func CreatePlaylist(authedClient *spotify.Client, tracks []spotify.FullTrack) (string, error) {
+	playlistName := generatePlaylistName(time.Now())
+
+	user, err := authedClient.CurrentUser()
+	if err != nil {
+		return "", err
+	}
+
+	playlist, err := authedClient.CreatePlaylistForUser(user.User.ID, playlistName, false)
+	if err != nil {
+		return "", err
+	}
+
+	trackIds := []spotify.ID{}
+	for _, track := range tracks {
+		trackIds = append(trackIds, track.ID)
+	}
+
+	_, err = authedClient.AddTracksToPlaylist(user.User.ID, playlist.ID, trackIds...)
+	return playlistName, err
+}
+
+func generatePlaylistName(t time.Time) string {
+	// NOTE: Change before 2030
+	return fmt.Sprintf("Echoespl Playlist %v", t.Unix())
+}
+
+func isValidForMarket(track spotify.FullTrack, targetMarket string) bool {
+	for _, market := range track.AvailableMarkets {
+		if market == targetMarket {
+			return true
+		}
+	}
+
+	return false
 }
 
 func echoesSongsToSearchStrings(songs []EchoesSong) []string {

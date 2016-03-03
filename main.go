@@ -150,7 +150,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	playlist, err := BuildPlaylist(client, songs)
+	playlist, err := BuildPlaylist(client, songs, "GB")
 
 	if err != nil {
 		fmt.Println("Error building playlist:", err)
