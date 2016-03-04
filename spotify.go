@@ -93,7 +93,7 @@ func generateState() string {
 
 // BuildPlaylist creates a Spotify playlist and returns a playlist identifier. authedClient is
 // an authenticated Spotify client, and songs is a list of songs scraped from the Echoes website
-func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong, market string) (string, error) {
+func BuildPlaylist(authedClient *spotify.Client, playlistName string, songs []EchoesSong, market string) (string, error) {
 	terms := echoesSongsToSearchStrings(songs)
 	fmt.Println("Buildling playlist of", len(terms), "terms")
 	results := make([]chan *spotify.SearchResult, 0, len(songs))
@@ -151,14 +151,16 @@ func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong, market stri
 	}
 
 	if len(tracks) > 0 {
-		return CreatePlaylist(authedClient, tracks)
+		return CreatePlaylist(authedClient, playlistName, tracks)
 	}
 	return "", errors.New("No tracks found")
 }
 
 // CreatePlaylist creates a new playlist given a set of tracks with a default name
-func CreatePlaylist(authedClient *spotify.Client, tracks []spotify.FullTrack) (string, error) {
-	playlistName := generatePlaylistName(time.Now())
+func CreatePlaylist(authedClient *spotify.Client, playlistName string, tracks []spotify.FullTrack) (string, error) {
+	if playlistName == "" {
+		playlistName = generatePlaylistName(time.Now())
+	}
 
 	user, err := authedClient.CurrentUser()
 	if err != nil {

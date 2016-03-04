@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/skratchdot/open-golang/open"
@@ -124,6 +125,9 @@ func main() {
 		os.Exit(1)
 	}
 
+	str := flag.String("p", "", "Default playlist name")
+	flag.Parse()
+
 	url := os.Args[len(os.Args)-1]
 	songs, err := GetShows(url)
 
@@ -150,7 +154,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	playlist, err := BuildPlaylist(client, songs, "GB")
+	playlist, err := BuildPlaylist(client, *str, songs, "GB")
 
 	if err != nil {
 		fmt.Println("Error building playlist:", err)
