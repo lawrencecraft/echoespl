@@ -4,36 +4,38 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	log "github.com/Sirupsen/logrus"
-	"github.com/skratchdot/open-golang/open"
-	"github.com/zmb3/spotify"
-	"golang.org/x/oauth2"
 	"io/ioutil"
 	"os"
 	"os/user"
 	"path"
+
+	log "github.com/Sirupsen/logrus"
+	"github.com/skratchdot/open-golang/open"
+	"github.com/zmb3/spotify"
+	"golang.org/x/oauth2"
 )
 
 var configDir = ".echoespl"
 
+// EchoesConfig holds configuration
 type EchoesConfig struct {
-	ClientId     string        `json:"client_id"`
+	ClientID     string        `json:"client_id"`
 	ClientSecret string        `json:"client_secret"`
 	AuthToken    *oauth2.Token `json:"current_token"`
 }
 
 func getAuthenticatedClient(config EchoesConfig, forceRefresh bool) (*spotify.Client, error) {
-	auth := GetDefaultAuthenticator(config.ClientId, config.ClientSecret)
+	auth := GetDefaultAuthenticator(config.ClientID, config.ClientSecret)
 	if config.AuthToken == nil || forceRefresh {
 		log.Infoln("Entering authentication flow refresh")
-		authenticationResponse, err := StartAuthenticationFlow(config.ClientId, config.ClientSecret)
+		authenticationResponse, err := StartAuthenticationFlow(config.ClientID, config.ClientSecret)
 		if err != nil {
 			log.Errorln("Got an error setting up auth flow:", err)
 			return nil, err
 		}
 
 		// Redirect user to the authentication URL
-		url := authenticationResponse.ClientRedirectUri
+		url := authenticationResponse.ClientRedirectURI
 		fmt.Println("Please visit", url, "if your browser does not automatically start")
 		open.Start(url)
 

@@ -33,7 +33,7 @@ func TestEchoesSongsToSearchStringsCreatesAProperLengthArray(t *testing.T) {
 
 	terms := echoesSongsToSearchStrings(songs)
 
-	assert_length(t, terms, 3)
+	assertLength(t, terms, 3)
 }
 
 func TestGeneratePlaylistNamePreservesUnixTime(t *testing.T) {
@@ -45,13 +45,13 @@ func TestGeneratePlaylistNamePreservesUnixTime(t *testing.T) {
 	}
 }
 
-func assert_length(t *testing.T, array []string, expected_length int) {
-	if len(array) != expected_length {
-		t.Error("Expected length", expected_length, "but instead got", len(array))
+func assertLength(t *testing.T, array []string, expectedLength int) {
+	if len(array) != expectedLength {
+		t.Error("Expected length", expectedLength, "but instead got", len(array))
 	}
 }
 
-func assert_equivalent(t *testing.T, expected []string, actual []string) {
+func assertEquivalent(t *testing.T, expected []string, actual []string) {
 	if len(expected) != len(actual) {
 		t.Error("Expected length", len(expected), "but actual length", len(actual))
 		return

@@ -5,47 +5,50 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/zmb3/spotify"
-	"golang.org/x/oauth2"
 	"math/rand"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/zmb3/spotify"
+	"golang.org/x/oauth2"
 )
 
 var (
-	redirect_url      = "http://localhost:5533/auth_callback"
-	redirect_port     = ":5533"
-	redirect_url_part = "/auth_callback"
+	redirectURL     = "http://localhost:5533/auth_callback"
+	redirectPort    = ":5533"
+	redirectURLPart = "/auth_callback"
 )
 
+// GetDefaultAuthenticator builds a default Spotify authenticator
 func GetDefaultAuthenticator(clientID string, secretKey string) spotify.Authenticator {
-	auth := spotify.NewAuthenticator(redirect_url, spotify.ScopePlaylistReadPrivate, spotify.ScopePlaylistModifyPrivate)
+	auth := spotify.NewAuthenticator(redirectURL, spotify.ScopePlaylistReadPrivate, spotify.ScopePlaylistModifyPrivate)
 	auth.SetAuthInfo(clientID, secretKey)
 	return auth
 }
 
+// AuthenticationResponse contains all fields returned from the auth start method
 type AuthenticationResponse struct {
 	TokenResponseChannel chan oauth2.Token
 	TokenResponseError   chan error
 	Authenticator        spotify.Authenticator
-	ClientRedirectUri    string
+	ClientRedirectURI    string
 }
 
-// StartAuthentication begins an authentication request to Spotify. It returns
+// StartAuthenticationFlow begins an authentication request to Spotify. It returns
 // an authentication URL and a channel. The channel will publish a the token when
 // the http server receives the callback.
 func StartAuthenticationFlow(clientID string, secretKey string) (AuthenticationResponse, error) {
 	auth := GetDefaultAuthenticator(clientID, secretKey)
 	state := generateState()
-	authUrl := auth.AuthURL(state)
+	authURL := auth.AuthURL(state)
 
 	replyChannel := make(chan oauth2.Token, 1)
 	errorChannel := make(chan error, 1)
 
-	http.HandleFunc(redirect_url_part, func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(redirectURLPart, func(w http.ResponseWriter, r *http.Request) {
 		transferredState, stateOk := r.URL.Query()["state"]
 		code, codeOk := r.URL.Query()["code"]
 
@@ -65,9 +68,9 @@ func StartAuthenticationFlow(clientID string, secretKey string) (AuthenticationR
 		}
 	})
 
-	go http.ListenAndServe(redirect_port, nil)
+	go http.ListenAndServe(redirectPort, nil)
 
-	return AuthenticationResponse{replyChannel, errorChannel, auth, authUrl}, nil
+	return AuthenticationResponse{replyChannel, errorChannel, auth, authURL}, nil
 }
 
 func generateState() string {
@@ -99,7 +102,7 @@ func BuildPlaylist(authedClient *spotify.Client, playlistName string, songs []Ec
 	results := make([]chan *spotify.SearchResult, 0, len(songs))
 	errorResult := make([]chan error, 0, len(songs))
 
-	tracks := make([]spotify.FullTrack, 0)
+	var tracks []spotify.FullTrack
 
 	// Dispatch each request in parallel
 	for _, term := range terms {

@@ -3,21 +3,24 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/yhat/scrape"
-	"golang.org/x/net/html"
-	"golang.org/x/net/html/atom"
 	"io"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/yhat/scrape"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
+// EchoesSong contains information for a song scraped from Echoes
 type EchoesSong struct {
 	Title  string
 	Album  string
 	Artist string
 }
 
+// GetShows retrieves all Echoes songs from a particular playlist page
 func GetShows(uri string) ([]EchoesSong, error) {
 	// fetch URL
 	client := http.Client{Timeout: 30 * time.Second}
@@ -44,7 +47,7 @@ func getShowsFromStream(stream io.ReadCloser) ([]EchoesSong, error) {
 
 	rows := scrape.FindAll(root, scrape.ByTag(atom.Tr))
 
-	songs := make([]EchoesSong, 0)
+	var songs []EchoesSong
 
 	for _, r := range rows {
 		song, ok := translateRow(r)
