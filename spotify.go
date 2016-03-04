@@ -132,11 +132,17 @@ func BuildPlaylist(authedClient *spotify.Client, songs []EchoesSong, market stri
 				fmt.Println("Possible problem with track", song.Title,
 					"by", song.Artist, "or the Spotify API. Please contact lawrencecraft on github")
 			} else {
+				found := false
 				for _, track := range result.Tracks.Tracks {
 					if isValidForMarket(track, market) {
 						tracks = append(tracks, track)
+						found = true
 						break
 					}
+				}
+
+				if !found {
+					fmt.Println("Unable to find", song.Title, "by", song.Artist)
 				}
 			}
 		case err := <-errorChannel:
