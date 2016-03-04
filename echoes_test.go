@@ -39,6 +39,7 @@ func TestReaderCanReadSongsFromAWebsite(t *testing.T) {
 	for _, s := range shows {
 		if s.Artist == "John Heart Jackie" && s.Title == "Nevada City" && s.Album == "Episodes" {
 			found = true
+			break
 		}
 	}
 

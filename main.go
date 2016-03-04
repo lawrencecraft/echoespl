@@ -9,7 +9,6 @@ import (
 	"os/user"
 	"path"
 
-	log "github.com/Sirupsen/logrus"
 	"github.com/skratchdot/open-golang/open"
 	"github.com/zmb3/spotify"
 	"golang.org/x/oauth2"
@@ -27,10 +26,8 @@ type EchoesConfig struct {
 func getAuthenticatedClient(config EchoesConfig, forceRefresh bool) (*spotify.Client, error) {
 	auth := GetDefaultAuthenticator(config.ClientID, config.ClientSecret)
 	if config.AuthToken == nil || forceRefresh {
-		log.Infoln("Entering authentication flow refresh")
 		authenticationResponse, err := StartAuthenticationFlow(config.ClientID, config.ClientSecret)
 		if err != nil {
-			log.Errorln("Got an error setting up auth flow:", err)
 			return nil, err
 		}
 
@@ -55,7 +52,6 @@ func getAuthenticatedClient(config EchoesConfig, forceRefresh bool) (*spotify.Cl
 			return &client, nil
 		}
 	} else {
-		log.Infoln("Pulled from config file")
 		client := auth.NewClient(config.AuthToken)
 		return &client, nil
 	}
@@ -102,7 +98,6 @@ func saveConfig(config EchoesConfig) error {
 	if err != nil {
 		return err
 	}
-	log.Infoln("Saving configuration file")
 	return nil
 }
 
