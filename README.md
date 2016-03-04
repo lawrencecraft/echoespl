@@ -2,7 +2,7 @@
 
 ## Usage
 
-    echoespl <url_of_playlist>
+    echoespl [-r] [-n playlist_name] <url_of_playlist>
 
 ## Installing
 
