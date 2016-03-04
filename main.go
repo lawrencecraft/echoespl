@@ -128,6 +128,7 @@ func main() {
 	}
 
 	str := flag.String("p", "", "Default playlist name")
+	refresh := flag.Bool("r", false, "-r forces echoespl to refresh the OAuth token")
 	flag.Parse()
 
 	url := os.Args[len(os.Args)-1]
@@ -141,7 +142,7 @@ func main() {
 	config, err := getConfig()
 
 	if err != nil {
-		fmt.Println("There's been a problem: %v", err)
+		fmt.Println("There's been a problem:", err)
 		os.Exit(1)
 	}
 
@@ -150,7 +151,7 @@ func main() {
 	}
 	fmt.Println("That's", len(songs), "songs")
 
-	client, err := getAuthenticatedClient(config, false)
+	client, err := getAuthenticatedClient(config, *refresh)
 	if err != nil {
 		fmt.Println("Problem authenticating:", err)
 		os.Exit(1)
