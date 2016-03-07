@@ -47,6 +47,8 @@ func getShowsFromStream(stream io.ReadCloser) ([]EchoesSong, error) {
 
 	rows := scrape.FindAll(root, scrape.ByTag(atom.Tr))
 
+	fmt.Println("Found", len(rows), "rows")
+
 	var songs []EchoesSong
 
 	for _, r := range rows {
@@ -65,12 +67,12 @@ func getShowsFromStream(stream io.ReadCloser) ([]EchoesSong, error) {
 
 func translateRow(row *html.Node) (EchoesSong, bool) {
 	columns := scrape.FindAll(row, scrape.ByTag(atom.Td))
-	if len(columns) != 4 {
+	if len(columns) != 4 && len(columns) != 5 {
 		return EchoesSong{}, false
 	}
 
 	artist := scrape.Text(columns[1])
-	if artist == "break" || artist == "Group Name" {
+	if artist == "break" || artist == "close" || artist == "Group Name" {
 		return EchoesSong{}, false
 	}
 
