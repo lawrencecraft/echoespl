@@ -29,6 +29,30 @@ func TestReaderCanReadSongsFromAnActualDocument(t *testing.T) {
 	}
 }
 
+func TestReaderCanStripBreakFromAnArtistName(t *testing.T) {
+	file, err := os.Open("test_doc.html")
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	shows, err := getShowsFromStream(file)
+	if err != nil {
+		t.Error(err)
+	}
+
+	found := false
+	for _, s := range shows {
+		if s.Artist == "TubeBoy" {
+			found = true
+		}
+	}
+
+	if !found {
+		t.Error("Could not find song")
+	}
+}
+
 func TestReaderCanReadSongsFromAWebsite(t *testing.T) {
 	shows, err := GetShows("http://echoes.org/2016/02/23/tuesday-february-23-2016-2/")
 	if err != nil {

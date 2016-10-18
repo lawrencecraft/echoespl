@@ -77,7 +77,7 @@ func translateRow(row *html.Node) (EchoesSong, bool) {
 	}
 
 	s := EchoesSong{}
-	s.Artist = scrape.Text(columns[1])
+	s.Artist = cleanArtist(scrape.Text(columns[1]))
 	s.Title = cleanTitle(scrape.Text(columns[2]))
 	s.Album = cleanAlbum(scrape.Text(columns[3]))
 
@@ -88,6 +88,10 @@ func cleanTitle(title string) string {
 	lowercasedCleanedString := strings.Replace(title, "(live)", "", -1)
 	cleanedString := strings.Replace(lowercasedCleanedString, "(Live)", "", -1)
 	return strings.TrimSpace(cleanedString)
+}
+
+func cleanArtist(artist string) string {
+	return strings.TrimPrefix(artist, "break-")
 }
 
 func cleanAlbum(album string) string {
