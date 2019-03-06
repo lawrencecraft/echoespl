@@ -170,7 +170,7 @@ func CreatePlaylist(authedClient *spotify.Client, playlistName string, tracks []
 		return "", err
 	}
 
-	playlist, err := authedClient.CreatePlaylistForUser(user.User.ID, playlistName, false)
+	playlist, err := authedClient.CreatePlaylistForUser(user.User.ID, playlistName, "Playlist from Echoespl", false)
 	if err != nil {
 		return "", err
 	}
@@ -180,7 +180,7 @@ func CreatePlaylist(authedClient *spotify.Client, playlistName string, tracks []
 		trackIds = append(trackIds, track.ID)
 	}
 
-	_, err = authedClient.AddTracksToPlaylist(user.User.ID, playlist.ID, trackIds...)
+	_, err = authedClient.AddTracksToPlaylist(playlist.ID, trackIds...)
 	return playlistName, err
 }
 
