@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/zmb3/spotify"
 	"golang.org/x/oauth2"
@@ -94,6 +95,72 @@ func generateState() string {
 	return base64.StdEncoding.EncodeToString(finalArray)
 }
 
+func stripParentheses(term string) string {
+	var b strings.Builder
+	inParens := false
+	for _, c := range term {
+		if c == '(' {
+			inParens = true
+		} else if c == ')' {
+			inParens = false
+		} else if !inParens {
+			b.WriteRune(c)
+		}
+	}
+	return strings.TrimSpace(b.String())
+}
+
+func splitUpPascalCase(term string) string {
+	if term == "" {
+		return term
+	}
+
+	var b strings.Builder
+	var last rune
+	for _, c := range term {
+		if last != '\x00' && unicode.IsUpper(c) && unicode.IsLower(last) {
+			b.WriteString(" ")
+		}
+		b.WriteRune(unicode.ToLower(c))
+		last = c
+	}
+	return strings.TrimSpace(b.String())
+}
+
+func raw(term EchoesSong) string {
+	return echoesSongToSearchString(term)
+}
+
+func noParenthesesFullString(song EchoesSong) string {
+	return stripParentheses(raw(song))
+}
+
+func justSong(song EchoesSong) string {
+	return stripParentheses(prependSearchType("track", song.Title))
+}
+
+func splitPascalCaseFullString(song EchoesSong) string {
+	return splitUpPascalCase(raw(song))
+}
+
+type searchStrategy func(EchoesSong) string
+
+func lookupSong(authedClient *spotify.Client, searchTerm EchoesSong) (*spotify.SearchResult, error) {
+	validators := []searchStrategy{raw, noParenthesesFullString, splitPascalCaseFullString, justSong}
+	var result *spotify.SearchResult
+	var err error
+	for _, strat := range validators {
+		t := strat(searchTerm)
+		result, err = authedClient.Search(t, spotify.SearchTypeTrack)
+		if result.Tracks == nil || len(result.Tracks.Tracks) == 0 || err != nil {
+			continue
+		}
+
+		return result, err
+	}
+	return result, err
+}
+
 // BuildPlaylist creates a Spotify playlist and returns a playlist identifier. authedClient is
 // an authenticated Spotify client, and songs is a list of songs scraped from the Echoes website
 func BuildPlaylist(authedClient *spotify.Client, playlistName string, songs []EchoesSong, market string) (string, error) {
@@ -105,7 +172,7 @@ func BuildPlaylist(authedClient *spotify.Client, playlistName string, songs []Ec
 	var tracks []spotify.FullTrack
 
 	// Dispatch each request in parallel
-	for _, term := range terms {
+	for _, term := range songs {
 		term := term
 		replyChannel := make(chan *spotify.SearchResult)
 		errorChannel := make(chan error)
@@ -113,8 +180,8 @@ func BuildPlaylist(authedClient *spotify.Client, playlistName string, songs []Ec
 		results = append(results, replyChannel)
 		errorResult = append(errorResult, errorChannel)
 
-		go func(t string, reply chan *spotify.SearchResult, errorReply chan error) {
-			result, err := authedClient.Search(t, spotify.SearchTypeTrack)
+		go func(t EchoesSong, reply chan *spotify.SearchResult, errorReply chan error) {
+			result, err := lookupSong(authedClient, t)
 			if err != nil {
 				errorReply <- err
 			} else {

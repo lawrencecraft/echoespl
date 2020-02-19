@@ -66,3 +66,23 @@ func assertEquivalent(t *testing.T, expected []string, actual []string) {
 		}
 	}
 }
+
+func TestStripString(t *testing.T) {
+	artist := "Bob (feat. Dave)"
+
+	stripped := stripParentheses(artist)
+
+	if stripped != "Bob" {
+		t.Errorf("Expected stripped parens. Should be 'Bob' but got '%s'", stripped)
+	}
+}
+
+func TestSplitPascalCase(t *testing.T) {
+	artist := "John DiMeo"
+
+	split := splitUpPascalCase(artist)
+
+	if split != "john di meo" {
+		t.Errorf("Expected split case. Should be 'john di meo' but got '%s'", split)
+	}
+}
