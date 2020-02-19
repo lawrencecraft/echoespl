@@ -124,6 +124,7 @@ func main() {
 
 	str := flag.String("p", "", "Default playlist name")
 	refresh := flag.Bool("r", false, "-r forces echoespl to refresh the OAuth token")
+	countryCode := flag.String("c", "GB", "-c determines the country code. Defaults to GB")
 	flag.Parse()
 
 	url := os.Args[len(os.Args)-1]
@@ -152,7 +153,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	playlist, err := BuildPlaylist(client, *str, songs, "GB")
+	playlist, err := BuildPlaylist(client, *str, songs, *countryCode)
 
 	if err != nil {
 		fmt.Println("Error building playlist:", err)
